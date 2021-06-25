@@ -1,0 +1,86 @@
+import string;
+import bytecode;
+import nvm;
+
+export {
+	exec(code : [Bytecode], nvm : NVM) -> void;
+}
+
+arithmBinOp(nvm : NVM, op : (int, int) -> int) -> void {
+	a = popStackInt(nvm);
+	b = popStackInt(nvm);
+	pushStack(NValInt(op(a, b)), nvm);
+}
+
+exec(code : [Bytecode], nvm : NVM) -> void {
+	if (length(^(nvm.errors)) == 0) {
+		if (nvm.pc >= length(code)) {
+			nvm.onError("nvm.pc >= length(code): " + i2s(nvm.pc) + " >= " + i2s(length(code)));
+		} else {
+			switch (code[nvm.pc]) {
+				BLoad(addr): {
+					if (addr >= length(nvm.memory)) {
+						nvm.onError("addr >= length(nvm.memory): " + i2s(addr) + " >= " + i2s(length(nvm.memory)));
+					} else {
+						nvm.stack ::= Cons(^(nvm.memory[addr]), nvm.stack);
+						exec(code, nvm);
+					}
+				}
+				BStore(addr): {
+					nvm.memory[addr] := popStack(nvm);
+				}
+				BGoto(addr): {
+					nvm.pc ::= addr;
+					exec(code, nvm);
+				}
+				BCond(addr1, addr2): {
+					switch (popStack(nvm)) {
+						NValBool(val): {
+							if (val) {
+								nvm.pc ::= addr1;
+							} else {
+								nvm.pc ::= addr2;
+							}
+							exec(code, nvm);
+						}
+						default: {
+							nvm.onError("illgal type of condition");
+						}
+					}
+				}
+				BSet(addr): {
+
+				}
+				BPrintln(): {
+
+				}
+				BExit(): {
+					// Return
+				}
+				BInt(val): {
+					pushStack(NValInt(val), nvm);
+					exec(code, nvm);
+				}
+				BBool(val): {
+					pushStack(NValBool(val), nvm);
+					exec(code, nvm);
+				}
+				BAdd(): {
+					arithmBinOp(nvm, \x, y -> x + y);
+				}
+				BSubtr(): {
+					arithmBinOp(nvm, \x, y -> x - y);
+				}
+				BMul(): {
+					arithmBinOp(nvm, \x, y -> x * y);
+				}
+				BDiv(): {
+					arithmBinOp(nvm, \x, y -> x / y);
+				}
+				BMod(): {
+					arithmBinOp(nvm, \x, y -> x % y);
+				}
+			}
+		}
+	}
+}

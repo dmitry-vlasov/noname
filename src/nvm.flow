@@ -1,0 +1,73 @@
+import runtime;
+import ds/list;
+import ds/array;
+
+export {
+	NVal ::= NValBool, NValInt, NValArr, NValUndef;
+		NValUndef();
+		NValBool(val : bool);
+		NValInt(val : int);
+		NValArr(val : [NVal]);
+
+	StackFrame(
+		args : [NVal],
+		locals : [NVal]
+	);
+
+	NVM(
+		memory : [ref NVal],
+		mutable stack : List<NVal>,
+		mutable pc : int,
+		mutable val : NVal,
+		errors : ref [string],
+		onError : (string) -> void, 
+	);
+
+	makeNVM(size : int) -> NVM;
+	popStack(nvm : NVM) -> NVal;
+	popStackInt(nvm : NVM) -> int;
+	pushStack(val : NVal, nvm : NVM) -> void;
+}
+
+makeNVM(size : int) -> NVM {
+	errors = ref [];
+	NVM(
+		map(enumFromTo(0, size - 1), \__ -> ref NValInt(0)),
+		EmptyList(),
+		0,
+		NValUndef(),
+		errors,
+		\err -> {
+			errors := concat(^errors, [err]);
+			println(err);
+		}
+	);
+}
+
+popStack(nvm : NVM) -> NVal {
+	switch (nvm.stack) {
+		Cons(head, tail_): {
+			nvm.stack ::= tail_;
+			head;
+		}
+		EmptyList(): {
+			nvm.onError("empty stack");
+			NValUndef();
+		}
+	}
+}
+
+pushStack(val : NVal, nvm : NVM) -> void {
+	nvm.stack ::= Cons(val, nvm.stack);
+}
+
+popStackInt(nvm : NVM) -> int {
+	val = popStack(nvm);
+	switch (val) {
+		NValInt(v): v;
+		default: {
+			nvm.onError("int value is expected on stack");
+			0;
+		}
+	}
+}

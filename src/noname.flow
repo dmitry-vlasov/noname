@@ -1,0 +1,25 @@
+import net/url_parameter;
+import fs/filesystem;
+
+import parse;
+import typing;
+
+main() -> void {
+	file = getUrlParameter("file");
+	if (file == "" || !fileExists(file)) {
+		println("No input file (or doesn't exist). Specify with 'file=<name>' option.");
+	} else {
+		src = getFileContent(file);
+		if (src == "") {
+
+		} else {
+			prog = s2noname(src);
+			println("SRC(1):\n" + toString(prog));
+			println("SRC(2):\n" + nprog2s(prog));
+			typing = nprog2types(prog, println);
+			println("TYPING:\n" + typing2s(typing));
+		}
+	}
+	quit(0);
+}
+

@@ -1,0 +1,14 @@
+import ast;
+import lingo/pegcode/driver;
+
+export {
+	s2noname(str : string) -> NProg;
+}
+
+noname_parser = compilePegGrammar("#include noname.lingo");
+
+s2noname(str : string) -> NProg {
+	parsic(noname_parser, str, SemanticActions(
+		setTree(defaultPegActions.t, "unaryCall", \s -> NCall(s[0], [s[1]]))
+	));
+}

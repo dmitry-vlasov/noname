@@ -1,0 +1,33 @@
+import runtime;
+import ds/list;
+import ds/array;
+
+export {
+	Bytecode ::= 
+		BLoad, BStore, 
+		BGoto, BCond, BSet, BPrintln, BExit, 
+		BBool, BInt, 
+		BAdd, BSubtr, BMul, BDiv, BMod;
+
+	// Load/store
+	BLoad(addr : int);
+	BStore(addr : int);
+
+	// Control
+	BGoto(addr : int);
+	BCond(addr1 : int, addr2 : int);
+	BSet(addr : int);
+	BPrintln();
+	BExit();
+
+	// Consts
+	BInt(val : int);
+	BBool(val : bool);
+
+	// Arithmetic
+	BAdd();
+	BSubtr();
+	BMul();
+	BDiv();
+	BMod();
+}

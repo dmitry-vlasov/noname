@@ -1,0 +1,159 @@
+import ast2s;
+
+export {
+	nprog2types(p : NProg, onError : (string) -> void) -> Tree<string, Tree<string, NType>>;
+	nfunc2types(fn : NFunc, fns : Tree<string, NType>, onError : (string) -> void) -> Tree<string, NType>;
+	nexp2types(acc : Tree<string, NType>, e : NExp, onError : (string) -> void) -> Pair<Tree<string, NType>, NType>;
+
+	typing2s(typing : Tree<string, Tree<string, NType>>) -> string;
+}
+
+nprog2types(p : NProg, onError : (string) -> void) -> Tree<string, Tree<string, NType>> {
+	fns = fold(p.funcs, makeTree(), \acc, fn -> 
+		setTree(acc, fn.id, NTypeFunc(map(fn.args, \arg -> arg.type), fn.type))
+	);
+	fold(p.funcs, makeTree(), \acc, fn -> 
+		setTree(acc, fn.id, nfunc2types(fn, fns, onError))
+	);
+}
+
+nfunc2types(fn : NFunc, fns : Tree<string, NType>, onError : (string) -> void) -> Tree<string, NType> {
+	arg_typing = fold(fn.args, fns, \acc, arg -> setTree(acc, arg.id, arg.type));
+	ret_type = nexp2types(arg_typing, fn.body, onError);
+	if (fn.type != ret_type.second) {
+		onError(
+			"Return type is not correct:\n" + 
+			"\t" + ntype2s(fn.type) + "\n!=\n" + 
+			"\t" + ntype2s(ret_type.second) + "\nin\n" + nfunc2s(fn)
+		);
+	}
+	ret_type.first;
+}
+
+nexp2types(acc : Tree<string, NType>, e : NExp, err : (string) -> void) -> Pair<Tree<string, NType>, NType> {
+	switch (e) {
+		NVar(v): {
+			switch (lookupTree(acc, v)) {
+				Some(t): {
+					Pair(acc, t);
+				}
+				None(): {
+					err("Variable '" + v + "' in not typed");
+					Pair(acc, NTypeBad("Variable '" + v + "' in not typed"));
+				}
+			}
+		}
+		NInt(val): {
+			Pair(acc, NTypeInt());
+		};
+		NWhile(cond, body): {
+			p1 = nexp2types(acc, cond, err);
+			if (p1.second != NTypeBool()) {
+				err("While condition must be of a bool type\nin:\n" + nexp2s(e));
+			}
+			nexp2types(p1.first, body, err);
+		}
+		NIfElse(cond, if_, else_): {
+			p1 = nexp2types(acc, cond, err);
+			if (p1.second != NTypeBool()) {
+				err("If condition must be of a bool type\nin:\n" + nexp2s(e));
+			}
+			p2 = nexp2types(p1.first, if_, err);
+			p3 = nexp2types(p2.first, else_, err);
+			if (p2.second != p3.second) {
+				err(
+					"If branches have different types:\n" +
+					"\t" + ntype2s(p2.second) + "\n!=\n" + 
+					"\t" + ntype2s(p3.second) + "\nin:\n" + nexp2s(e)
+				);
+			}
+			p3;
+		}
+		NAssign(id, val, further): {
+			p1 = nexp2types(acc, val, err);
+			acc1 = setTree(acc, id, p1.second);
+			nexp2types(acc1, further, err);
+		}
+		NBinOp(id, left, right): {
+			pl = nexp2types(acc, left, err);
+			pr = nexp2types(pl.first, left, err);
+			if (contains(["+", "/", "-", "%"],id)) {
+				if (pl.second == NTypeInt() && pr.second == NTypeInt()) {
+					Pair(pr.first, NTypeInt());
+				} else {
+					err("Both sides of arithmetic operator '" + id + "' must be integer\nin:\n" + nexp2s(e));
+					Pair(pr.first, NTypeBad(""));
+				}
+			} else if (contains(["<", "<=", ">", ">=", "==", "!="],id)) {
+				if (pl.second == NTypeInt() && pr.second == NTypeInt()) {
+					Pair(pr.first, NTypeBool());
+				} else if (pl.second == NTypeBool() && pr.second == NTypeBool()) {
+					Pair(pr.first, NTypeBool());
+				} else {
+					err("Both sides of arithmetic operator '" + id + "' must be integer\nin:\n" + nexp2s(e));
+					Pair(pr.first, NTypeBad(""));
+				}
+			} else {
+				// TODO
+				pr;
+			}
+		}
+		NUnOp(id, val): {
+			// We suppose that all unary operators keep type of an argument.
+			nexp2types(acc, val, err);
+		}
+		NCall(id, args): {
+			ps : Pair<Tree<string, NType>, [NType]> = fold(args, Pair(acc, []), \ac, arg -> {
+				p = nexp2types(ac.first, arg, err);
+				Pair(p.first, concat(ac.second, [p.second]));
+			});
+			switch (lookupTree(ps.first, id)) {
+				Some(fn_type): {
+					if (fn_type.args != ps.second) {
+						err(
+							"Call argument types mismatch:\n" +
+							"\t" + ntypes2s(fn_type.args) + "\n!=\n" + 
+							"\t" + ntypes2s(ps.second) + "\nin:\n" + nexp2s(e)
+						);
+					}
+					Pair(ps.first, fn_type.return);
+				}
+				None(): {
+					err("Call function '" + id + "' is not found\nin:\n" + nexp2s(e));
+					Pair(ps.first, NTypeBad("Call function '" + id + "' is not found"));
+				}
+			}
+		}
+		NArr(vals): {
+			p0 = nexp2types(acc, vals[0], err);
+			acc1 = fold(tail(vals), p0.first, \ac, val -> {
+				pi = nexp2types(ac, val, err);
+				if (pi.second != p0.second) {
+					err(
+						"Array values have different types:\n" +
+						"\t" + ntype2s(p0.second) + "\n!=\n" + 
+						"\t" + ntype2s(pi.second) + "\nin:\n" + nexp2s(e)
+					);
+				}
+				pi.first
+			});
+			Pair(acc1, NTypeArray(p0.second));
+		}
+		NEmpty(type): {
+			Pair(acc, type);
+		}
+		NPrint(val, further): {
+			p = nexp2types(acc, val, err);
+			nexp2types(p.first, further, err);
+		}
+	}
+}
+
+typing2s(typing : Tree<string, Tree<string, NType>>) -> string {
+	foldTree(typing, "", \id, types, acc -> 
+		acc + "types in '" + id + "'\n" + 
+		foldTree(types, "", \v, tp, ac -> 
+			ac + "\t" + v + " : " + ntype2s(tp) + "\n"
+		)
+	);
+}

@@ -1,0 +1,31 @@
+import string;
+
+export {
+	NProg(funcs : [NFunc]);
+
+	NType ::= NTypeInt, NTypeBool, NTypeArray, NTypeFunc, NTypeBad;
+		NTypeBad(err : string);
+		NTypeInt();
+		NTypeBool();
+		NTypeArray(type : NType);
+		NTypeFunc(args : [NType], return : NType);
+
+	NFunc(id : string, args : [NArg], type : NType, body : NExp);
+		NArg(id : string, type : NType);
+
+	NExp ::= NInt, NWhile, NIfElse, NAssign, NBinOp, NCall, NUnOp, NArr, NEmpty, NPrint, NVar;
+
+	NVar(id : string);
+	NInt(val : int);
+	NWhile(conf : NExp, body : NExp);
+	NIfElse(conf : NExp, if_ : NExp, else_ : NExp);
+	NAssign(id : string, val : NExp, further : NExp);
+
+	NBinOp(id : string, left : NExp, right : NExp);
+	NUnOp(id : string, val : NExp);
+	NCall(id : string, args : [NExp]);
+
+	NArr(vals : [NExp]);
+	NEmpty(type : NType);
+	NPrint(val : NExp, further : NExp);
+}

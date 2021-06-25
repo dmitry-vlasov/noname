@@ -1,0 +1,35 @@
+prog = ws fn*:fns { NProg(:fns)};
+
+fn = "fn" ws id:id '(' ws fn_arg*:as ')' ws "->" ws type:tp '{' ws expr:bd '}' ws { NFunc(:id, :as, :tp, :bd) };
+	fn_arg = id:id ':' ws type:tp (',' ws)? { NArg(:id, :tp) };
+
+type  = type_int | type_bool | type_array;
+	type_int   = "int" ws { NTypeInt() };
+	type_bool  = "bool" ws { NTypeBool() };
+	type_array = '[' ws type:t ']' ws { NTypeArray(:t) };
+
+expr   = print | ifelse | while | array | int | bin_op | un_op | call | un_call | assign | var;
+	print  = "print" ws '(' ws expr:e ')' ws ';' ws expr:f { NPrint(:e, :f) };
+	ifelse = "if"    ws expr:cond ws '{' ws expr:if '}' ws "else" ws '{' ws expr:else '}' ws { NIfElse(:cond, :if, :else) };
+	while  = "while" ws expr:cond ws '{' expr:body '}' ws { NWhile(:cond, :body) };
+	array  = '[' call_arg+:as ']' { NArr(:as) };
+	empty_arr = '[' ws ']' ws ':' type:tp { NEmptyArr(:tp) };
+	int  = digit+ $s ws { NInt(s2i($s)) };
+	bin_op = '(' ws expr:l op $op ws expr:r ')' ws { NBinOp($op, :l, :r) };
+	un_op  = op $op ws expr:e { NUnOp($op, :e) };
+	un_call= id:id ws '.' ws expr:a { unaryCall(:id, :a) };
+	call   = id:id ws '(' ws call_arg*:as ')' ws { NCall(:id, :as) };
+		call_arg = expr:a (',' ws)? { :a };
+	assign = id:id ":=" ws expr:v ';' ws expr:f { NAssign(:id, :v, :f) };
+	var    = id:id { NVar(:id) };
+
+op = '+' | '*' | '/' | '-' | '%' | '&' | '|' | "<=" | ">=" | "==" | "!=" | '<' | '>' | '!' ;
+
+id = (letter (letter | digit)*) $s ws { $s };
+letter = 'a'-'z' | 'A'-'Z';
+digit  = '0'-'9';
+//ws = (' ' | '\t' | '\n' | '\r')*;
+ws = s*;
+s = cs+;
+cs = " " | "\t" | "\n" | "//" (!"\n" anychar)* "\n" | "/*" (!"*/" anychar)* "*/";
+anychar = '\u0000'-'\uFFFF';

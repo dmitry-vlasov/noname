@@ -1,0 +1,108 @@
+import ast;
+import text/blueprint;
+
+export {
+	nprog2s(p : NProg) -> string;
+	nfunc2s(fn : NFunc) -> string;
+	ntypes2s(tps : [NType]) -> string;
+	ntype2s(tp : NType) -> string;
+	nexp2s(e : NExp) -> string;
+}
+
+nprog2s(p : NProg) -> string {
+	superglue(p.funcs, nfunc2s, "\n");
+}
+
+nfunc2s(fn : NFunc) -> string {
+	blueprint("
+		fn %id% (%args%) -> %type% {
+			%body%
+		}
+		",
+		[
+			"id", fn.id,
+			"args", superglue(fn.args, \arg -> arg.id + " : " + ntype2s(arg.type), ", "),
+			"type", ntype2s(fn.type),
+			"body", nexp2s(fn.body)
+		]
+	);
+}
+
+ntypes2s(tps : [NType]) -> string {
+	superglue(tps, ntype2s, ", ");
+}
+
+ntype2s(tp : NType) -> string {
+	switch (tp) {
+		NTypeBad(msg): "type error: " + msg;
+		NTypeInt(): "int";
+		NTypeBool(): "bool";
+		NTypeArray(type): "[" + ntype2s(type) + "]";
+		NTypeFunc(args, return): "(" + ntypes2s(args) + ") -> " + ntype2s(return);
+	}
+}
+
+nexp2s(e : NExp) -> string {
+	switch (e) {
+		NVar(id): id;
+		NInt(val): i2s(val);
+		NWhile(cond, body): {
+			blueprint("
+				while %cond% {
+					%body%
+				}", [
+					"cond", nexp2s(cond),
+					"body", nexp2s(body)
+				]
+			);
+		}
+		NIfElse(cond, if_, else_): {
+			blueprint("
+				if %cond% {
+					%if%
+				} else {
+					%else%
+				}", [
+					"cond", nexp2s(cond),
+					"if", nexp2s(if_),
+					"else", nexp2s(else_)
+				]
+			);
+		}
+		NAssign(id, val, further): {
+			blueprint("
+				%id% := %val%;
+				%further%", [
+					"id", id,
+					"val", nexp2s(val),
+					"further", nexp2s(further)
+				]
+			);
+		}
+
+		NBinOp(id, left, right): {
+			"(" + nexp2s(left) + " " + id + " " + nexp2s(right) + ")";
+		}
+		NUnOp(id, val): {
+			id + " " + nexp2s(val);
+		}
+		NCall(id, args): {
+			id + "(" + superglue(args, nexp2s, ", ") + ")";
+		}
+		NArr(vals): {
+			"[" + superglue(vals, nexp2s, ", ") + "]";
+		}
+		NEmpty(type): {
+			"[] : " + ntype2s(type) ;
+		}
+		NPrint(val, further): {
+			blueprint("
+				print(%val%);
+				%further%", [
+					"val", nexp2s(val),
+					"further", nexp2s(further)
+				]
+			);
+		}
+	}
+}
