@@ -15,27 +15,29 @@ export {
 	);
 
 	NVM(
-		memory : [ref NVal],
-		mutable stack : List<NVal>,
+		heapMem : [ref NVal],
+		stackMem : [ref NVal],
+		mutable stackTop : int,
 		mutable pc : int,
-		mutable val : NVal,
 		errors : ref [string],
 		onError : (string) -> void, 
 	);
 
-	makeNVM(size : int) -> NVM;
+	makeNVM(stackSize : int, heapSize : int) -> NVM;
 	popStack(nvm : NVM) -> NVal;
-	popStackInt(nvm : NVM) -> int;
 	pushStack(val : NVal, nvm : NVM) -> void;
+
+	popStackInt(nvm : NVM) -> int;
+	popStackBool(nvm : NVM) -> bool;
 }
 
-makeNVM(size : int) -> NVM {
+makeNVM(stackSize : int, heapSize : int) -> NVM {
 	errors = ref [];
 	NVM(
-		map(enumFromTo(0, size - 1), \__ -> ref NValInt(0)),
-		EmptyList(),
-		0,
-		NValUndef(),
+		map(enumFromTo(0, heapSize - 1), \__ -> ref NValInt(0)),
+		map(enumFromTo(0, stackSize - 1), \__ -> ref NValInt(0)),
+		0, // stackTop
+		0, // pc
 		errors,
 		\err -> {
 			errors := concat(^errors, [err]);
@@ -45,29 +47,39 @@ makeNVM(size : int) -> NVM {
 }
 
 popStack(nvm : NVM) -> NVal {
-	switch (nvm.stack) {
-		Cons(head, tail_): {
-			nvm.stack ::= tail_;
-			head;
-		}
-		EmptyList(): {
-			nvm.onError("empty stack");
-			NValUndef();
-		}
+	nvm.stackTop ::= nvm.stackTop - 1;
+	if (nvm.stackTop < 0) {
+		nvm.onError("Popping empty stack");
+		NValUndef();
+	} else {
+		^(nvm.stackMem[nvm.stackTop]);
 	}
 }
 
 pushStack(val : NVal, nvm : NVM) -> void {
-	nvm.stack ::= Cons(val, nvm.stack);
+	nvm.stackMem[nvm.stackTop] := val;
+	nvm.stackTop ::= nvm.stackTop + 1;
+	if (nvm.stackTop >= length(nvm.stackMem)) {
+		nvm.onError("Stack overflow");
+	}
 }
 
 popStackInt(nvm : NVM) -> int {
-	val = popStack(nvm);
-	switch (val) {
-		NValInt(v): v;
+	switch (popStack(nvm)) {
+		NValInt(val): val;
 		default: {
-			nvm.onError("int value is expected on stack");
+			nvm.onError("Integer value expected on stack");
 			0;
+		}
+	}
+}
+
+popStackBool(nvm : NVM) -> bool {
+	switch (popStack(nvm)) {
+		NValBool(val): val;
+		default: {
+			nvm.onError("Boolean value expected on stack");
+			false;
 		}
 	}
 }

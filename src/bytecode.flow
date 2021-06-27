@@ -5,9 +5,10 @@ import ds/array;
 export {
 	Bytecode ::= 
 		BLoad, BStore, 
-		BGoto, BCond, BSet, BPrintln, BExit, 
+		BGoto, BCond, BPrintln, BExit, 
 		BBool, BInt, 
-		BAdd, BSubtr, BMul, BDiv, BMod;
+		BAdd, BSubtr, BMul, BDiv, BMod,
+		BEq, BLess;
 
 	// Load/store
 	BLoad(addr : int);
@@ -16,7 +17,6 @@ export {
 	// Control
 	BGoto(addr : int);
 	BCond(addr1 : int, addr2 : int);
-	BSet(addr : int);
 	BPrintln();
 	BExit();
 
@@ -30,4 +30,8 @@ export {
 	BMul();
 	BDiv();
 	BMod();
+
+	// Compare
+	BEq(); 
+	BLess();
 }

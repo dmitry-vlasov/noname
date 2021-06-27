@@ -1,0 +1,31 @@
+import bytecode;
+import string;
+
+export {
+	bytecodes2s(code : [Bytecode])-> string;
+	bytecode2s(code : Bytecode)-> string;
+}
+
+bytecodes2s(code : [Bytecode])-> string {
+	concatStrings(map(code, \bc -> bytecode2s(bc) + "\n"));
+}
+
+bytecode2s(code : Bytecode)-> string {
+	switch (code) {
+		BLoad(addr): "load " + i2s(addr);
+		BStore(addr): "store " + i2s(addr);
+		BGoto(addr): "goto " + i2s(addr);
+		BCond(addr1, addr2): "cond " + i2s(addr1) + ", " + i2s(addr2);
+		BPrintln(): "println";
+		BExit(): "exit";
+		BInt(val): "int " + i2s(val);
+		BBool(val): "bool " + b2s(val);
+		BAdd(): "add";
+		BSubtr(): "subtr";
+		BMul(): "mul";
+		BDiv(): "div";
+		BMod(): "mod";
+		BEq(): "eq";
+		BLess(): "less";
+	}
+}

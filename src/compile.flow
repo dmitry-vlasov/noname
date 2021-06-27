@@ -1,0 +1,37 @@
+import bytecode;
+import ast;
+
+export {
+	compile(prog : NProg, onError : (string) -> void) -> [Bytecode];
+}
+
+compile(prog : NProg, err : (string) -> void) -> [Bytecode] { 
+	switch (find(prog.funcs, \fn -> fn.id == "main")) {
+		Some(main): {
+			funcs = concat(filter(prog.funcs, \fn -> fn.id != "main"), [main]);
+			fold(map(funcs, \fn -> compileFunc(fn, err)), [], \acc, code ->
+				link(acc, code)
+			);
+		}
+		None(): {
+			err("No main function");
+			[]
+		}
+	}
+}
+
+compileFunc(func : NFunc, err : (string) -> void) -> [Bytecode] {
+
+}
+
+compileExp(exp : NExp, err : (string) -> void) -> [Bytecode] {
+	switch (exp) {
+		Struct(var): {
+			
+		}
+	}
+}
+
+link(acc : [Bytecode], code : [Bytecode]) -> [Bytecode] {
+	concat(acc, code);
+}
